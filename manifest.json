@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "보도자료 뉴스 추적기",
+  "version": "1.0",
+  "description": "공공기관 보도자료와 관련된 네이버 뉴스 검색 결과를 모아 CSV로 내려받습니다.",
+  "action": { "default_title": "보도자료 뉴스 추적기 열기" },
+  "background": { "service_worker": "background.js" },
+  "host_permissions": ["http://*/*", "https://*/*"]
+}

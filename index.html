@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>보도자료 뉴스 추적기</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #fff; --text: #1d2330; --muted: #6b7280; --line: #e3e6eb;
+    --accent: #03a94d; --accent-ink: #fff; --warn: #b45309; --err: #b91c1c; --row-off: #9aa1ab;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #14171c; --panel: #1c2027; --text: #e7e9ee; --muted: #9aa3b2; --line: #2d333d;
+            --accent: #22c55e; --accent-ink: #0b1a10; --warn: #f59e0b; --err: #f87171; --row-off: #5d6470; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.55 "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 28px 16px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 22px; }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+  h2 { font-size: 15px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+  h2 .n { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+          background: var(--accent); color: var(--accent-ink); font-size: 12px; }
+  label { display: block; font-weight: 600; font-size: 13px; margin: 10px 0 4px; }
+  .hint { font-weight: 400; color: var(--muted); }
+  input[type=text], input[type=url], input[type=date], textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--bg); color: var(--text); font: inherit; }
+  textarea { resize: vertical; min-height: 64px; }
+  .row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .row > .grow { flex: 1 1 280px; }
+  button { padding: 8px 16px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel);
+           color: var(--text); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  button:disabled { opacity: .5; cursor: default; }
+  .info { margin-top: 12px; padding: 10px 12px; border-radius: 6px; background: var(--bg); }
+  .info b { font-size: 15px; }
+  .muted { color: var(--muted); }
+  .err { color: var(--err); }
+  .hidden { display: none; }
+  .progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; margin: 10px 0 4px; }
+  .progress > div { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+  .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .toolbar .sp { flex: 1; }
+  input[type=range] { accent-color: var(--accent); vertical-align: middle; }
+  .tablewrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; white-space: nowrap; cursor: pointer; user-select: none; }
+  td.nowrap { white-space: nowrap; }
+  tr.off td { color: var(--row-off); }
+  tr.off a { color: var(--row-off); }
+  a { color: inherit; }
+  .score { display: inline-block; min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+  .bar { display: inline-block; width: 46px; height: 5px; background: var(--line); border-radius: 3px; vertical-align: middle; margin-left: 6px; }
+  .bar > i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+  .kw { font-size: 11px; color: var(--muted); }
+  .warnbox { border: 1px solid var(--warn); color: var(--warn); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; background: var(--panel); }
+  label.chk { font-weight: 400; display: flex; gap: 6px; align-items: center; margin: 0 0 8px; }
+  .nbadge { display: inline-block; margin-left: 6px; padding: 0 5px; border-radius: 3px; background: #03c75a; color: #fff;
+            font-size: 11px; font-weight: 700; text-decoration: none; line-height: 16px; }
+  code { font-size: 12px; background: var(--bg); padding: 1px 4px; border-radius: 3px; }
+  pre#preview { max-height: 220px; overflow: auto; background: var(--bg); padding: 10px; border-radius: 6px; font-size: 12px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<main>
+  <h1>보도자료 → 네이버 뉴스 보도 목록</h1>
+  <p class="sub">공공기관 보도자료 주소를 넣으면 네이버 뉴스 검색에 나온 관련 기사를 모두(언론사 원문 링크 포함) 모아 CSV로 정리합니다.</p>
+
+  <div id="modeWarn" class="warnbox hidden">
+    이 파일을 직접 열면 브라우저 보안(CORS) 때문에 다른 사이트를 읽을 수 없습니다.
+    <b>크롬 확장프로그램</b>으로 설치하거나, 이 폴더에서 <code>node server.js</code> 를 실행한 뒤
+    <code>http://localhost:8765</code> 로 접속하세요. (자세한 방법은 README.txt)
+  </div>
+
+  <section>
+    <h2><span class="n">1</span>보도자료 불러오기</h2>
+    <div class="row">
+      <div class="grow">
+        <label for="url">보도자료 상세 페이지 URL</label>
+        <input id="url" type="url" placeholder="https://www.mcst.go.kr/site/s_notice/press/pressView.jsp?pSeq=...">
+      </div>
+      <button id="btnLoad" class="primary">불러오기</button>
+    </div>
+    <div id="releaseInfo" class="info hidden"></div>
+  </section>
+
+  <section id="secSearch" class="hidden">
+    <h2><span class="n">2</span>검색 조건</h2>
+    <label for="queries">검색어 <span class="hint">— 한 줄에 하나씩. 각 검색어 결과를 합쳐 중복을 없앱니다.</span></label>
+    <textarea id="queries" rows="4"></textarea>
+    <label for="keywords">관련도 판단 키워드 <span class="hint">— 쉼표 구분, 동의어는 <code>인공지능|AI</code> 처럼 | 로 연결. 기사 제목·본문에 포함된 비율로 관련도를 계산합니다.</span></label>
+    <input id="keywords" type="text">
+    <div class="row">
+      <div><label for="ds">기간 시작</label><input id="ds" type="date"></div>
+      <div><label for="de">기간 끝</label><input id="de" type="date"></div>
+      <div><label for="pages">검색어당 최대 페이지 <span class="hint">(10건/페이지)</span></label>
+        <input id="pages" type="text" value="10" style="width:90px"></div>
+      <div><label class="chk"><input type="checkbox" id="exactTime" checked> 기사 페이지에서 시:분까지 확인</label></div>
+      <div class="grow"></div>
+      <button id="btnSearch" class="primary">네이버 뉴스 검색</button>
+      <button id="btnStop" class="hidden">중지</button>
+    </div>
+    <div id="prog" class="hidden">
+      <div class="progress"><div id="progBar"></div></div>
+      <div id="progText" class="muted"></div>
+    </div>
+  </section>
+
+  <section id="secResult" class="hidden">
+    <h2><span class="n">3</span>결과 <span id="count" class="muted" style="font-weight:400"></span></h2>
+    <div class="toolbar">
+      <span>관련도 기준 <input id="thr" type="range" min="0" max="100" step="5" value="0"> <b id="thrVal">0%</b> 이상 선택</span>
+      <span class="sp"></span>
+      <button id="btnCopy">CSV 복사</button>
+      <button id="btnCsv" class="primary">CSV 다운로드</button>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr>
+          <th style="width:28px"><input type="checkbox" id="chkAll" title="전체 선택"></th>
+          <th data-sort="datetime">보도일시 ↕</th>
+          <th data-sort="press">언론사 ↕</th>
+          <th data-sort="title">제목 ↕</th>
+          <th data-sort="score">관련도 ↕</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <details style="margin-top:12px"><summary class="muted">CSV 미리보기 (선택된 행)</summary><pre id="preview"></pre></details>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
